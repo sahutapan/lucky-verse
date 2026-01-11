@@ -1,0 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Jolly+Lodger&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-charcoal text-text-primary font-sans antialiased;
+  }
+
+  /* Scrollbar Styling */
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-pirate-gold/20 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-pirate-gold/50;
+  }
+
+  /* Custom Scrollbar Utility for internal containers */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-pirate-gold/10 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-pirate-gold/40;
+  }
+
+  /* Focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-gold-primary ring-offset-2 ring-offset-charcoal;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-gold-primary/30 text-text-primary;
+  }
+}
+
+@layer utilities {
+
+  /* Text utilities - Pirate Gold */
+  .text-gradient-gold {
+    background: linear-gradient(to right, #d4af37, #e8c547, #d4af37);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-fire {
+    @apply bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent;
+  }
+
+  /* Pirate Treasure Gold Glow effects */
+  .glow-treasure {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+  }
+
+  .glow-treasure-strong {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.5), 0 0 60px rgba(212, 175, 55, 0.3);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.24);
+  }
+
+  .glow-accent-strong {
+    box-shadow: 0 0 30px rgba(255, 107, 53, 0.24), 0 0 60px rgba(255, 107, 53, 0.12);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  }
+
+  .glow-pink {
+    box-shadow: 0 0 20px rgba(255, 22, 148, 0.3);
+  }
+
+  /* Pirate maroon glow for hot badges */
+  .glow-maroon {
+    box-shadow: 0 0 20px rgba(91, 26, 26, 0.6);
+  }
+
+  /* Transitions */
+  .transition-fast {
+    @apply transition-all duration-fast ease-in-out;
+  }
+
+  .transition-normal {
+    @apply transition-all duration-normal ease-in-out;
+  }
+
+  .transition-slow {
+    @apply transition-all duration-slow ease-in-out;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-surface-glass backdrop-blur-xl border border-border-dim;
+  }
+
+  /* Elevated card */
+  .card-elevated {
+    @apply bg-surface-base border border-border-subtle rounded-lg shadow-sm;
+  }
+
+  .card-elevated:hover {
+    @apply -translate-y-0.5 shadow-md;
+  }
+
+  /* Premium card (casino style) */
+  .card-premium {
+    @apply bg-slate border border-border-dim rounded-xl overflow-hidden transition-all duration-normal;
+  }
+
+  .card-premium:hover {
+    @apply -translate-y-2 scale-105 shadow-card-hover;
+  }
+
+  /* Shimmer effect */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(212, 175, 55, 0.1) 50%,
+        transparent 100%);
+    animation: shimmer 2s infinite;
+  }
+
+  /* Floating animation for characters */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
+
+/* Casino-specific animations */
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+    opacity: 1;
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.5);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Gradient overlays */
+.gradient-overlay-dark {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.8) 100%);
+}
+
+.gradient-overlay-gold {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(244, 208, 63, 0.2) 50%, rgba(212, 175, 55, 0.2) 100%);
+}
+
+/* Radial gradient utility */
+.bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .shimmer::before {
+    animation: none;
+  }
+
+  .animate-float {
+    animation: none;
+  }
+}
