@@ -1,7 +1,6 @@
-import uuid
+from datetime import datetime, timezone
 from typing import Any
-from sqlalchemy import Column, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, DateTime, Integer
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.sql import func
 
@@ -18,6 +17,6 @@ class Base:
 class BaseModel(Base):
     __abstract__ = True
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.timezone('utc', func.now()))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), server_default=func.timezone('utc', func.now()))

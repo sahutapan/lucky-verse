@@ -27,6 +27,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url with the one from settings
+print(f"DEBUG: Using database URL: {settings.DATABASE_URL}")
 config.set_main_option("sqlalchemy.url", str(settings.DATABASE_URL))
 
 def run_migrations_offline() -> None:

@@ -1,12 +1,12 @@
 from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api import deps
+from app.utils import deps
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.user import User as UserSchema
 
-router = APIRouter()
+router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserSchema)
 async def read_user_me(

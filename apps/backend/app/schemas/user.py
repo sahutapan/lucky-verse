@@ -1,10 +1,13 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr
-from uuid import UUID
 
 class UserBase(BaseModel):
     email: EmailStr
     username: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 class UserCreate(UserBase):
     password: str
@@ -15,7 +18,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
 
 class UserInDBBase(UserBase):
-    id: UUID
+    id: int
     is_active: bool
     is_superuser: bool
     elo_rating: int
@@ -29,3 +32,9 @@ class User(UserInDBBase):
 
 class UserInDB(UserInDBBase):
     hashed_password: str
+
+from app.schemas.token import Token
+
+class UserRegisterResponse(BaseModel):
+    user: User
+    tokens: Token

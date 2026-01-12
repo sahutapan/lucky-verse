@@ -25,11 +25,11 @@ class WalletService:
             raise ValueError("Wallet not found")
 
         # Check sufficient funds for deductions
-        if amount < 0 and wallet.balance + amount < 0:
+        if amount < 0 and (Decimal(str(wallet.balance)) + Decimal(str(amount))) < 0:
             raise ValueError("Insufficient funds")
 
         # Update balance
-        wallet.balance += amount
+        wallet.balance = Decimal(str(wallet.balance)) + Decimal(str(amount))
         self.db.add(wallet)
 
         # Log transaction

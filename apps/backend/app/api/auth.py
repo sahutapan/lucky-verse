@@ -1,73 +1,67 @@
-from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.api import deps
-from app.core import security
-from app.core.config import settings
-from app.core.database import get_db
-from app.models.user import User
-from app.models.wallet import Wallet
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.utils.deps import get_auth_service
 from app.schemas.token import Token
-from app.schemas.user import UserCreate, User as UserSchema
+from app.schemas.user import UserCreate, User as UserSchema, LoginRequest, UserRegisterResponse
+from app.services.auth import AuthService
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/login", response_model=Token)
-async def login_access_token(
-    db: AsyncSession = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+from fastapi.security import OAuth2PasswordRequestForm
+
+
+@router.post("/login-oauth2", response_model=Token)
+async def login_oauth2(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    auth_service: AuthService = Depends(get_auth_service)
 ) -> Any:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    OAuth2 compatible token login, get an access token for future requests.
+    In Swagger UI, use the 'username' field for your email.
     """
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalars().first()
-    
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    user = await auth_service.authenticate_user(form_data.username, form_data.password)
+    if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
         
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
-    }
+    return auth_service.create_tokens(user.id)
 
-@router.post("/register", response_model=UserSchema)
+@router.post("/login", response_model=Token)
+async def login(
+    form_data: LoginRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> Any:
+    """
+    JSON based login for cleaner API usage.
+    """
+    user = await auth_service.authenticate_user(form_data.email, form_data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+        
+    return auth_service.create_tokens(user.id)
+
+@router.post("/register", response_model=UserRegisterResponse)
 async def register_user(
-    *,
-    db: AsyncSession = Depends(get_db),
     user_in: UserCreate,
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> Any:
     """
     Create new user without the need to be logged in
     """
-    result = await db.execute(select(User).where(User.email == user_in.email))
-    user = result.scalars().first()
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
-        
-    user = User(
-        email=user_in.email,
-        username=user_in.username,
-        hashed_password=security.get_password_hash(user_in.password),
-        provider="credentials"
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    
-    # Create wallet for new user
-    wallet = Wallet(user_id=user.id)
-    db.add(wallet)
-    await db.commit()
-    
-    return user
+    user = await auth_service.register_user(user_in)
+    tokens = auth_service.create_tokens(user.id)
+    return {"user": user, "tokens": tokens}
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    refresh_token: str,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Any:
+    """
+    Refresh access token using refresh token
+    """
+    return await auth_service.refresh_access_token(refresh_token)
