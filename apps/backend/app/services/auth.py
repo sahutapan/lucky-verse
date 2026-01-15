@@ -12,6 +12,7 @@ from app.models.wallet import Wallet
 from app.schemas.user import UserCreate
 from app.schemas.token import Token
 from app.services.wallet import WalletService
+from app.utils.referral import get_unique_referral_code, get_user_by_referral_code
 
 class AuthService:
     def __init__(self, db: AsyncSession):
@@ -32,37 +33,69 @@ class AuthService:
                 status_code=400,
                 detail="The user with this email already exists",
             )
-            
+
         result = await self.db.execute(select(User).where(User.username == user_in.username))
         if result.scalars().first():
             raise HTTPException(
                 status_code=400,
                 detail="This username is already taken",
             )
-            
+
+        # Validate referral code if provided
+        referred_by_user = None
+        if user_in.referral_code:
+            referred_by_user = await get_user_by_referral_code(
+                self.db,
+                user_in.referral_code
+            )
+            if not referred_by_user:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid referral code",
+                )
+
+        # Generate unique referral code for new user
+        referral_code = await get_unique_referral_code(self.db)
+
         user = User(
             email=user_in.email,
             username=user_in.username,
             hashed_password=security.get_password_hash(user_in.password),
-            provider="credentials"
+            provider="credentials",
+            referral_code=referral_code,
+            referred_by_id=referred_by_user.id if referred_by_user else None
         )
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)
-        
+
         # Create wallet for new user
         wallet = Wallet(user_id=user.id)
         self.db.add(wallet)
         await self.db.commit()
-        
-        # Award signup bonus
+
         wallet_service = WalletService(self.db)
+
+
+        signup_bonus = Decimal("5000")
         await wallet_service.update_balance(
             user_id=user.id,
-            amount=Decimal("5000"),
+            amount=signup_bonus,
             transaction_type="signup_bonus"
         )
-        
+        if referred_by_user:
+            referral_bonus = Decimal("1000") 
+            await wallet_service.update_balance(
+                user_id=user.id,
+                amount=referral_bonus,
+                transaction_type="join_referral_bonus"
+            )
+            await wallet_service.update_balance(
+                user_id=referred_by_user.id,
+                amount=referral_bonus,
+                transaction_type="referral_bonus"
+            )
+
         return user
 
     def create_tokens(self, user_id: Any) -> Token:

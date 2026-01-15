@@ -1,5 +1,5 @@
 from typing import Generator, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie, Request
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from pydantic import ValidationError
@@ -20,11 +20,14 @@ http_bearer = HTTPBearer(auto_error=False)
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
     token_oauth2: str = Depends(reusable_oauth2),
-    token_bearer: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer)
+    token_bearer: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer),
+    token_cookie: Optional[str] = Cookie(None, alias=settings.ACCESS_TOKEN_COOKIE_NAME)
 ) -> User:
     token = token_oauth2
     if not token and token_bearer:
         token = token_bearer.credentials
+    if not token:
+        token = token_cookie
     
     if not token:
         raise HTTPException(
