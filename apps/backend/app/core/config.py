@@ -10,15 +10,19 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
-    DATABASE_URL: Union[str, PostgresDsn]
+    POSTGRES_HOST: str = "postgres"
+    DATABASE_URL: Optional[Union[str, PostgresDsn]] = None
 
     # Redis
-    REDIS_URL: str
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
+    REDIS_URL: Optional[Union[str, RedisDsn]] = None
 
     # Security
     SECRET_KEY: str = "changethis" # TODO: Generate a strong key
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 7 # 7 hours
 
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str] = None
@@ -33,10 +37,20 @@ class Settings(BaseSettings):
             return v
         return PostgresDsn.build(
             scheme="postgresql+asyncpg",
-            user=values.get("POSTGRES_USER"),
+            username=values.get("POSTGRES_USER"),
             password=values.get("POSTGRES_PASSWORD"),
-            host="postgres", # Docker service name
-            path=f"/{values.get('POSTGRES_DB') or ''}",
+            host=values.get("POSTGRES_HOST"),
+            path=values.get('POSTGRES_DB') or '',
+        )
+
+    @validator("REDIS_URL", pre=True)
+    def assemble_redis_connection(cls, v: Optional[str], values: dict[str, any]) -> any:
+        if isinstance(v, str):
+            return v
+        return RedisDsn.build(
+            scheme="redis",
+            host=values.get("REDIS_HOST"),
+            port=values.get("REDIS_PORT"),
         )
 
     class Config:

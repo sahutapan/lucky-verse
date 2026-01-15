@@ -1,6 +1,6 @@
 from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,13 +12,25 @@ from app.schemas.token import TokenPayload
 from sqlalchemy.future import select
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login-oauth2",
+    auto_error=False
 )
+http_bearer = HTTPBearer(auto_error=False)
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(reusable_oauth2)
+    token_oauth2: str = Depends(reusable_oauth2),
+    token_bearer: Optional[HTTPAuthorizationCredentials] = Depends(http_bearer)
 ) -> User:
+    token = token_oauth2
+    if not token and token_bearer:
+        token = token_bearer.credentials
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
+        )
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -30,7 +42,7 @@ async def get_current_user(
             detail="Could not validate credentials",
         )
     
-    result = await db.execute(select(User).where(User.id == token_data.sub))
+    result = await db.execute(select(User).where(User.id == int(token_data.sub)))
     user = result.scalars().first()
     
     if not user:
@@ -43,3 +55,13 @@ def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+# Service dependency factories
+from app.services.auth import AuthService
+from app.services.wallet import WalletService
+
+async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
+    return AuthService(db)
+
+async def get_wallet_service(db: AsyncSession = Depends(get_db)) -> WalletService:
+    return WalletService(db)
