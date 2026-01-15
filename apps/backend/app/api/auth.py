@@ -1,73 +1,104 @@
-from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.api import deps
-from app.core import security
+from fastapi import APIRouter, Depends, HTTPException, Response
 from app.core.config import settings
-from app.core.database import get_db
-from app.models.user import User
-from app.models.wallet import Wallet
+
+from app.utils.deps import get_auth_service
+from app.utils.auth import set_auth_cookies
 from app.schemas.token import Token
-from app.schemas.user import UserCreate, User as UserSchema
+from app.schemas.user import UserCreate, User as UserSchema, LoginRequest, UserRegisterResponse
+from app.services.auth import AuthService
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/login", response_model=Token)
-async def login_access_token(
-    db: AsyncSession = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+from fastapi.security import OAuth2PasswordRequestForm
+
+
+
+
+@router.post("/login-oauth2", response_model=Token)
+async def login_oauth2(
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    auth_service: AuthService = Depends(get_auth_service)
 ) -> Any:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    OAuth2 compatible token login, get an access token for future requests.
+    In Swagger UI, use the 'username' field for your email.
     """
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalars().first()
-    
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+    user = await auth_service.authenticate_user(form_data.username, form_data.password)
+    if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
         
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
-    }
+    tokens = auth_service.create_tokens(user.id)
+    set_auth_cookies(response, tokens)
+    return tokens
 
-@router.post("/register", response_model=UserSchema)
+@router.post("/login", response_model=Token)
+async def login(
+    response: Response,
+    form_data: LoginRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+) -> Any:
+    """
+    JSON based login for cleaner API usage.
+    """
+    user = await auth_service.authenticate_user(form_data.email, form_data.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+        
+    tokens = auth_service.create_tokens(user.id)
+    set_auth_cookies(response, tokens)
+    return tokens
+
+@router.post("/register", response_model=UserRegisterResponse)
 async def register_user(
-    *,
-    db: AsyncSession = Depends(get_db),
+    response: Response,
     user_in: UserCreate,
+    auth_service: AuthService = Depends(get_auth_service),
 ) -> Any:
     """
     Create new user without the need to be logged in
     """
-    result = await db.execute(select(User).where(User.email == user_in.email))
-    user = result.scalars().first()
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
-        
-    user = User(
-        email=user_in.email,
-        username=user_in.username,
-        hashed_password=security.get_password_hash(user_in.password),
-        provider="credentials"
+    user = await auth_service.register_user(user_in)
+    tokens = auth_service.create_tokens(user.id)
+    set_auth_cookies(response, tokens)
+    return {"user": user, "tokens": tokens}
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    response: Response,
+    refresh_token: str = None, # Can now be optional in body if provided via cookie
+    auth_service: AuthService = Depends(get_auth_service),
+) -> Any:
+    """
+    Refresh access token using refresh token
+    """
+    tokens = await auth_service.refresh_access_token(refresh_token)
+    set_auth_cookies(response, tokens)
+    return tokens
+
+@router.post("/logout")
+async def logout(response: Response) -> Any:
+    """
+    Logout by clearing auth cookies.
+    """
+    response.delete_cookie(
+        key=settings.ACCESS_TOKEN_COOKIE_NAME,
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.COOKIE_SECURE,
+        domain=settings.COOKIE_DOMAIN,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    
-    # Create wallet for new user
-    wallet = Wallet(user_id=user.id)
-    db.add(wallet)
-    await db.commit()
-    
-    return user
+    response.delete_cookie(
+        key=settings.REFRESH_TOKEN_COOKIE_NAME,
+        httponly=True,
+        samesite=settings.COOKIE_SAMESITE,
+        secure=settings.COOKIE_SECURE,
+        domain=settings.COOKIE_DOMAIN,
+    )
+    return {"message": "Successfully logged out"}
+

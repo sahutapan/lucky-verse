@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, Gift, Menu, X, ChevronRight, MessageSquarePlus, UserPlus } from 'lucide-react';
+import { Trophy, Menu, X, ChevronRight, MessageSquarePlus, UserPlus } from 'lucide-react';
 import logo from '../../assets/icons/games/lucky-verse-logo.png';
 
 interface NavItem {

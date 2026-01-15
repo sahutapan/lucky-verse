@@ -24,18 +24,14 @@ export default function LoginPage() {
             formData.append('username', data.email);
             formData.append('password', data.password);
 
-            const res = await api.post('/auth/login', formData, {
+            await api.post('/auth/login', formData, {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             });
 
-            const token = res.data.access_token;
+            // Get user profile (cookies sent automatically)
+            const userRes = await api.get('/users/me');
 
-            // Get user profile
-            const userRes = await api.get('/users/me', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            setAuth(token, userRes.data);
+            setAuth(userRes.data);
             navigate('/');
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Login failed');

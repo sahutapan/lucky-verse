@@ -1,24 +1,22 @@
-from typing import Any, List
+from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.api import deps
-from app.core.database import get_db
+
+from app.utils.deps import get_current_user, get_wallet_service
 from app.models.user import User
 from app.services.wallet import WalletService
 from app.services.payment import PaymentService
 from app.schemas.wallet import WalletBalance, TransactionCreate, TransactionResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/wallet", tags=["wallet"])
 
 @router.get("/balance", response_model=WalletBalance)
 async def get_balance(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user)
+    current_user: User = Depends(get_current_user),
+    wallet_service: WalletService = Depends(get_wallet_service)
 ) -> Any:
     """
     Get current user's wallet balance.
     """
-    wallet_service = WalletService(db)
     wallet = await wallet_service.get_wallet_by_user_id(current_user.id)
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
@@ -27,8 +25,8 @@ async def get_balance(
 @router.post("/deposit", response_model=TransactionResponse)
 async def deposit(
     transaction_in: TransactionCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user)
+    current_user: User = Depends(get_current_user),
+    wallet_service: WalletService = Depends(get_wallet_service)
 ) -> Any:
     """
     Simulate a deposit (Sandbox).
@@ -41,7 +39,6 @@ async def deposit(
     
     if payment_result["status"] == "success":
         # 2. Update Wallet
-        wallet_service = WalletService(db)
         await wallet_service.update_balance(
             user_id=current_user.id,
             amount=transaction_in.amount,
@@ -59,16 +56,14 @@ async def deposit(
 @router.post("/withdraw", response_model=TransactionResponse)
 async def withdraw(
     transaction_in: TransactionCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(deps.get_current_user)
+    current_user: User = Depends(get_current_user),
+    wallet_service: WalletService = Depends(get_wallet_service)
 ) -> Any:
     """
     Simulate a withdrawal (Sandbox).
     """
     if transaction_in.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
-
-    wallet_service = WalletService(db)
     
     try:
         # 1. Deduct from Wallet first (optimistic)

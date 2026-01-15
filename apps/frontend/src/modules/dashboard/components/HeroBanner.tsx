@@ -7,7 +7,7 @@ interface HeroBannerProps {
     userName?: string;
 }
 
-export function HeroBanner({ isLoggedIn = false, userName }: HeroBannerProps) {
+export function HeroBanner({ isLoggedIn = false, userName: _userName }: HeroBannerProps) {
     return (
         <div className="relative w-full overflow-hidden">
             {/* Main Content Container */}
@@ -42,8 +42,9 @@ export function HeroBanner({ isLoggedIn = false, userName }: HeroBannerProps) {
                             {/* Context-Aware CTA Section */}
                             <div className="flex flex-col items-start gap-3">
                                 <Button
+                                    variant={"primary"}
                                     size="lg"
-                                    className="relative group bg-gradient-to-r from-pirate-gold via-pirate-gold-light to-pirate-gold text-pirate-void font-bold px-10 py-6 text-xl border-2 border-pirate-gold-light shadow-glow-treasure hover:shadow-glow-treasure-strong animate-pulse-slow transition-all duration-300 hover:-translate-y-1"
+                                    className="text-pirate-void"
                                 >
                                     <span className="flex items-center gap-2">
                                         {isLoggedIn ? 'Start Playing' : 'Get Bonus & Play'}
